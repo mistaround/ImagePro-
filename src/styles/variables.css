@@ -1,0 +1,21 @@
+:root {
+  --ink: #1f1d1a;
+  --ink-2: #4a463f;
+  --ink-3: #8a857c;
+  --paper: #faf8f3;
+  --paper-2: #f1ede4;
+  --rule: #2a2724;
+  --accent-blue: #2f5fb3;
+  --tag-red:    #d4453d;
+  --tag-yellow: #e7b528;
+  --tag-blue:   #2f7fc7;
+  --tag-green:  #4f9a55;
+
+  --font-ui: "PingFang SC", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", monospace;
+
+  --sidebar-bg: #f1ede4;
+  --toolbar-bg: #f1ede4;
+  --grid-bg: #1f1d1a;
+  --cell-bg: #2a2724;
+}
