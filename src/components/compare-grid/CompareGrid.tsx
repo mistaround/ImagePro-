@@ -81,7 +81,9 @@ export default function CompareGrid() {
     }}>
       {Array.from({ length: n }).map((_, i) => {
         const folder = folders[i];
-        const isPeekTarget = peek.targetFolderPath === folder.path;
+        const isPeekTarget = peek.peekAll
+          ? peek.sourceFolderPath !== folder.path
+          : peek.targetFolderPath === folder.path;
         const isPeekSource = peek.sourceFolderPath === folder.path;
         return (
           <GridCell

@@ -1,9 +1,10 @@
 import { ipcMain } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import sharp from 'sharp';
 
-// In-memory thumbnail cache
 const thumbnailCache = new Map<string, string>();
+const MAX_CACHE_SIZE = 500;
 
 export function registerThumbnailHandlers() {
   ipcMain.handle(
@@ -15,12 +16,14 @@ export function registerThumbnailHandlers() {
 
       try {
         const ext = path.extname(filePath).toLowerCase();
-        if (ext === '.png' || ext === '.jpg' || ext === '.jpeg') {
+        if (ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp') {
           const buffer = fs.readFileSync(filePath);
-          const base64 = `data:image/${ext === '.png' ? 'png' : 'jpeg'};base64,${buffer.toString('base64')}`;
+          const resized = await sharp(buffer)
+            .resize(size, size, { fit: 'inside', withoutEnlargement: true })
+            .toBuffer();
+          const base64 = `data:image/${ext === '.png' ? 'png' : 'jpeg'};base64,${resized.toString('base64')}`;
           thumbnailCache.set(cacheKey, base64);
-          // Limit cache size
-          if (thumbnailCache.size > 500) {
+          if (thumbnailCache.size > MAX_CACHE_SIZE) {
             const firstKey = thumbnailCache.keys().next().value;
             if (firstKey) thumbnailCache.delete(firstKey);
           }

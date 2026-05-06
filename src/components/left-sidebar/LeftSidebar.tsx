@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useUIStore } from '../../stores/useUIStore.js';
 import { useFolderStore } from '../../stores/useFolderStore.js';
 import { useAppStore } from '../../stores/useAppStore.js';
@@ -17,7 +17,10 @@ export default function LeftSidebar() {
   const toggle = useUIStore((s) => s.toggleLeftSidebar);
   const mode = useAppStore((s) => s.mode);
   const folders = useFolderStore((s) => s.folders);
+  const favorites = useFolderStore((s) => s.favorites);
   const updateAlias = useFolderStore((s) => s.updateAlias);
+  const addFavorite = useFolderStore((s) => s.addFavorite);
+  const removeFavorite = useFolderStore((s) => s.removeFavorite);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const selectedLabel = mode === 'preview'
@@ -48,17 +51,22 @@ export default function LeftSidebar() {
         <Section title={selectedLabel}>
           {folders.map((f, i) => (
             <div key={f.path} style={{ padding: '3px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span style={{
-                width: 14, height: 14,
-                border: '1px solid var(--rule)',
-                borderRadius: 2,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 9,
-                background: 'var(--paper)',
-                flexShrink: 0,
-              }}>✓</span>
+              <button
+                onClick={() => {
+                  if (favorites.includes(f.path)) {
+                    removeFavorite(f.path);
+                  } else {
+                    addFavorite(f.path);
+                  }
+                }}
+                title={favorites.includes(f.path) ? '取消收藏' : '添加收藏'}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 12, padding: 0, lineHeight: 1,
+                  color: favorites.includes(f.path) ? 'var(--tag-yellow)' : 'var(--ink-3)',
+                  flexShrink: 0,
+                }}
+              >{favorites.includes(f.path) ? '★' : '☆'}</button>
               {editingIndex === i ? (
                 <AliasEditInput
                   initialValue={f.alias}

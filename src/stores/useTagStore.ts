@@ -24,14 +24,15 @@ export const useTagStore = create<TagStore>((set, get) => ({
   dirtyFolders: new Set(),
 
   setTag: (imagePath, color) => {
-    set((state) => ({
-      tags: { ...state.tags, [imagePath]: state.tags[imagePath] === color ? undefined as unknown as TagColorKey : color },
-    }));
-    // Clean up undefined
     set((state) => {
-      const cleaned = { ...state.tags };
-      if (cleaned[imagePath] === undefined) delete cleaned[imagePath];
-      return { tags: cleaned };
+      const current = state.tags[imagePath];
+      if (current === color) {
+        // Toggle off
+        const tags = { ...state.tags };
+        delete tags[imagePath];
+        return { tags };
+      }
+      return { tags: { ...state.tags, [imagePath]: color } };
     });
   },
 

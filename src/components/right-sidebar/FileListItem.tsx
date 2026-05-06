@@ -1,4 +1,5 @@
 import { useTagStore } from '../../stores/useTagStore.js';
+import { useThumbnail } from '../../hooks/useThumbnail.js';
 import { TAG_COLORS } from '../../types/tags.js';
 
 interface FileListItemProps {
@@ -16,6 +17,7 @@ export default function FileListItem({
 }: FileListItemProps) {
   const tag = useTagStore((s) => s.tags[filePath]);
   const thumbSize = compact ? 22 : 24;
+  const thumbSrc = useThumbnail(filePath, thumbSize * 2);
 
   const handleClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -53,11 +55,24 @@ export default function FileListItem({
         position: 'relative',
         overflow: 'hidden',
       }}>
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'repeating-linear-gradient(135deg, rgba(0,0,0,0.08) 0 1px, transparent 1px 6px)',
-        }} />
+        {thumbSrc ? (
+          <img
+            src={thumbSrc}
+            alt=""
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        ) : (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'repeating-linear-gradient(135deg, rgba(0,0,0,0.08) 0 1px, transparent 1px 6px)',
+          }} />
+        )}
       </div>
       <span style={{
         flex: 1,

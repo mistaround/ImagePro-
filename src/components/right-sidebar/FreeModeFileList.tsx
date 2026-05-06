@@ -12,14 +12,8 @@ export default function FreeModeFileList() {
   // Get files for each folder
   const getFolderFiles = (folderPath: string) => {
     const folder = folders.find((f) => f.path === folderPath);
-    if (!folder || !folder.files || folder.files.length === 0) {
-      // Return placeholder files
-      return Array.from({ length: 8 }).map((_, i) => ({
-        filename: `${String(i + 40).padStart(4, '0')}.png`,
-        absolutePath: `${folderPath}/${String(i + 40).padStart(4, '0')}.png`,
-      }));
-    }
-    return (folder.files || []).slice(0, 8).map((f) => ({
+    if (!folder || !folder.files || folder.files.length === 0) return [];
+    return folder.files.slice(0, 50).map((f) => ({
       filename: f.filename || f.absolutePath.split(/[/\\]/).pop() || '',
       absolutePath: f.absolutePath,
     }));

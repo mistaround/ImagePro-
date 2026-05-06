@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 
-// In-memory image cache (URL → HTMLImageElement)
+// In-memory image cache (URL → HTMLImageElement) with LRU eviction
 const imageCache = new Map<string, HTMLImageElement>();
 const MAX_CACHE_SIZE = 50;
 
@@ -8,12 +8,14 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const cached = imageCache.get(src);
     if (cached) {
+      // Move to end (most recently used)
+      imageCache.delete(src);
+      imageCache.set(src, cached);
       resolve(cached);
       return;
     }
     const img = new Image();
     img.onload = () => {
-      // LRU eviction
       if (imageCache.size >= MAX_CACHE_SIZE) {
         const firstKey = imageCache.keys().next().value;
         if (firstKey) imageCache.delete(firstKey);

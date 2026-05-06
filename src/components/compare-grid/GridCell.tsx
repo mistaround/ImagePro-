@@ -38,6 +38,7 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
   const stopPeek = usePeekStore((s) => s.stopPeek);
   const peekActive = usePeekStore((s) => s.active);
   const peekSourcePath = usePeekStore((s) => s.sourceFolderPath);
+  const peekAll = usePeekStore((s) => s.peekAll);
 
   const tags = useTagStore((s) => s.tags);
   const tag = currentSelection ? tags[currentSelection] : undefined;
@@ -56,7 +57,7 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
   const currentFile = currentSelection
     ? folder.files?.find((f) => f.absolutePath === currentSelection)
     : null;
-  const currentFileName = currentFile?.filename || '0042.png';
+  const currentFileName = currentFile?.filename || '';
 
   // Load the current image
   const { image, loading } = useImageLoader(currentSelection || null);
@@ -310,7 +311,7 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
           zIndex: 10,
           pointerEvents: 'none',
         }}>
-          peek 中：叠加 {folders.find((f) => f.path === peekSourcePath)?.alias || ''}
+          peek 中：叠加 {folders.find((f) => f.path === peekSourcePath)?.alias || ''}{peekAll ? ' (全部)' : ''}
         </div>
       )}
 

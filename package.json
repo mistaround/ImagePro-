@@ -4,8 +4,9 @@
   "description": "跨平台桌面端图片对比工具",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite build --config vite.electron.config.ts && concurrently -n renderer,electron \"vite\" \"sleep 3 && electron .\"",
-    "build": "vite build && vite build --config vite.electron.config.ts && electron-builder",
+    "dev": "vite build --config vite.electron.config.ts && concurrently -n renderer,electron \"vite\" \"sleep 3 && electron . --dev\"",
+    "build": "vite build && vite build --config vite.electron.config.ts && electron-builder --dir",
+    "build:exe": "vite build && vite build --config vite.electron.config.ts && electron-builder",
     "preview": "vite build && vite build --config vite.electron.config.ts && electron .",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.electron.json"
   },
@@ -13,9 +14,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "electron-store": "^8.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "sharp": "^0.33.5",
     "zustand": "^4.5.7"
   },
   "devDependencies": {
@@ -25,7 +26,6 @@
     "concurrently": "^8.2.2",
     "electron": "^30.5.1",
     "electron-builder": "^24.13.3",
-    "sharp": "^0.33.5",
     "typescript": "^5.9.3",
     "vite": "^5.4.21",
     "wait-on": "^7.2.0"

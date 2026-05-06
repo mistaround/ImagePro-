@@ -19,7 +19,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   mode: 'compare',
   pairingMode: 'name',
   selectedIndex: 0,
-  totalCount: 200,
+  totalCount: 0,
 
   setMode: (mode) => set({ mode }),
   setPairingMode: (pairingMode) => set({ pairingMode }),

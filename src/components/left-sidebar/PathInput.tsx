@@ -5,22 +5,16 @@ import { useUIStore } from '../../stores/useUIStore.js';
 export default function PathInput() {
   const [inputPath, setInputPath] = useState('');
   const addFolder = useFolderStore((s) => s.addFolder);
-  const addFavorite = useFolderStore((s) => s.addFavorite);
   const setShowPicker = useUIStore((s) => s.setShowFolderPicker);
 
   const handleBrowse = useCallback(async () => {
-    if (!window.electronAPI) {
-      // Demo mode: add mock folder
-      const mockPath = inputPath || `/demo/images_${Date.now()}`;
-      addFolder(mockPath, mockPath.split('/').pop() || 'demo', []);
-      return;
-    }
+    if (!window.electronAPI) return;
     const folderPath = await window.electronAPI.selectFolder();
     if (folderPath) {
       const files = await window.electronAPI.scanImages(folderPath);
       setShowPicker(true, folderPath, files.map((f) => ({ absolutePath: f.absolutePath })));
     }
-  }, [inputPath, addFolder, setShowPicker]);
+  }, [setShowPicker]);
 
   const handleAdd = useCallback(() => {
     if (inputPath.trim()) {

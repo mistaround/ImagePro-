@@ -71,12 +71,12 @@ export default function SameNameFileList({ alias, totalFiles, synced }: SameName
                 onClick={() => handleClick(i)}
               />
             ))
-          : Array.from({ length: visibleCount }).map((_, i) => (
+          : folders[0]?.files?.slice(0, visibleCount).map((f, i) => (
               <FileListItem
-                key={i}
-                name={`${String(i + 40).padStart(4, '0')}.png`}
+                key={f.absolutePath}
+                name={f.filename || f.absolutePath.split(/[/\\]/).pop() || ''}
                 active={i === selectedIndex}
-                filePath={`/demo/${alias}/${String(i + 40).padStart(4, '0')}.png`}
+                filePath={f.absolutePath}
                 onClick={() => handleClick(i)}
               />
             ))

@@ -1,13 +1,24 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTagStore } from '../../stores/useTagStore.js';
+import { useFolderStore } from '../../stores/useFolderStore.js';
 import { TAG_COLORS } from '../../types/tags.js';
 
 export default function FilterChipsRow() {
   const tagMeta = useTagStore((s) => s.tagMeta);
+  const tags = useTagStore((s) => s.tags);
+  const folders = useFolderStore((s) => s.folders);
   const [activeFilters, setActiveFilters] = useState<Set<number>>(new Set());
 
-  // Mock counts
-  const counts: Record<number, number> = { 1: 12, 2: 4, 3: 0, 4: 7 };
+  const counts = useMemo(() => {
+    const c: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    for (const folder of folders) {
+      for (const file of folder.files || []) {
+        const tag = tags[file.absolutePath];
+        if (tag) c[tag]++;
+      }
+    }
+    return c;
+  }, [tags, folders]);
 
   const toggleFilter = (key: number) => {
     setActiveFilters((prev) => {

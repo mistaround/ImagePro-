@@ -14,7 +14,7 @@ export default defineConfig({
       fileName: (format, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
-      external: ['electron', 'electron-store', 'sharp', 'path', 'fs', 'os'],
+      external: ['electron', 'sharp', 'path', 'fs', 'os'],
     },
   },
   resolve: {
