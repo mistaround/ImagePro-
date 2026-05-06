@@ -1,13 +1,49 @@
+import { useEffect } from 'react';
 import { useFolderStore } from '../../stores/useFolderStore.js';
+import { useImageStore } from '../../stores/useImageStore.js';
 import { usePeekStore } from '../../stores/usePeekStore.js';
+import { useAppStore } from '../../stores/useAppStore.js';
 import { gridLayoutFor } from '../../utils/grid-layout.js';
+import { computeSameNameGroups } from '../../utils/file-matching.js';
 import GridCell from './GridCell.js';
 
 export default function CompareGrid() {
   const folders = useFolderStore((s) => s.folders);
+  const pairingMode = useAppStore((s) => s.pairingMode);
+  const selectedIndex = useAppStore((s) => s.selectedIndex);
+  const setTotalCount = useAppStore((s) => s.setTotalCount);
+  const currentSelections = useImageStore((s) => s.currentSelections);
+  const setSelectionsForAll = useImageStore((s) => s.setSelectionsForAll);
+  const peek = usePeekStore();
+
   const n = folders.length;
   const layout = gridLayoutFor(n);
-  const peek = usePeekStore();
+
+  // Compute same-name groups
+  useEffect(() => {
+    if (pairingMode === 'name' && folders.length > 0) {
+      const folderFiles: Record<string, { absolutePath: string; filename: string; baseName: string }[]> = {};
+      for (const folder of folders) {
+        folderFiles[folder.path] = (folder.files || []).map((f) => ({
+          absolutePath: f.absolutePath,
+          filename: f.filename || f.absolutePath.split(/[/\\]/).pop() || '',
+          baseName: f.filename ? f.filename.replace(/\.[^.]+$/, '') : (f.absolutePath.split(/[/\\]/).pop() || '').replace(/\.[^.]+$/, ''),
+        }));
+      }
+      const groups = computeSameNameGroups(folderFiles, folders.map((f) => f.path));
+      setTotalCount(groups.length);
+
+      // Set selections for current index
+      if (groups.length > 0 && selectedIndex < groups.length) {
+        const group = groups[Math.min(selectedIndex, groups.length - 1)];
+        const selections: Record<string, string> = {};
+        for (const [folderPath, file] of Object.entries(group)) {
+          if (file) selections[folderPath] = file.absolutePath;
+        }
+        setSelectionsForAll(selections);
+      }
+    }
+  }, [pairingMode, folders, selectedIndex, setTotalCount, setSelectionsForAll]);
 
   if (n === 0) {
     return (
@@ -44,14 +80,15 @@ export default function CompareGrid() {
       minHeight: 0,
     }}>
       {Array.from({ length: n }).map((_, i) => {
-        const isPeekTarget = peek.targetFolderPath === folders[i]?.path;
-        const isPeekSource = peek.sourceFolderPath === folders[i]?.path;
+        const folder = folders[i];
+        const isPeekTarget = peek.targetFolderPath === folder.path;
+        const isPeekSource = peek.sourceFolderPath === folder.path;
         return (
           <GridCell
             key={i}
             idx={i}
             n={n}
-            folder={folders[i]}
+            folder={folder}
             isPeekTarget={isPeekTarget}
             isPeekSource={isPeekSource}
           />

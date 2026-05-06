@@ -2,10 +2,17 @@ import type { ImageFile } from '../types/images.js';
 
 export type MatchGroup = Record<string, ImageFile | null>;
 
+// More flexible input type for file matching
+export interface MinimalFileEntry {
+  baseName: string;
+  absolutePath: string;
+  filename: string;
+}
+
 export function computeSameNameGroups(
-  folderFiles: Record<string, ImageFile[]>,
+  folderFiles: Record<string, MinimalFileEntry[]>,
   folderPaths: string[],
-): MatchGroup[] {
+): Record<string, MinimalFileEntry | null>[] {
   if (folderPaths.length === 0) return [];
 
   // Collect all unique base names across all folders
@@ -23,7 +30,7 @@ export function computeSameNameGroups(
   );
 
   return sortedNames.map((baseName) => {
-    const group: MatchGroup = {};
+    const group: Record<string, MinimalFileEntry | null> = {};
     for (const folderPath of folderPaths) {
       const files = folderFiles[folderPath] || [];
       const match = files.find((f) => f.baseName === baseName) || null;

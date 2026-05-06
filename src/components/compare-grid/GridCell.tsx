@@ -5,13 +5,14 @@ import { usePeekStore } from '../../stores/usePeekStore.js';
 import { useTagStore } from '../../stores/useTagStore.js';
 import { useFolderStore } from '../../stores/useFolderStore.js';
 import { useUIStore } from '../../stores/useUIStore.js';
+import { useImageLoader } from '../../hooks/useImageLoader.js';
 import { TAG_COLORS } from '../../types/tags.js';
 import AliasEditInput from '../dialogs/AliasEditInput.js';
 
 interface GridCellProps {
   idx: number;
   n: number;
-  folder: { path: string; alias: string; colorIndex: number };
+  folder: { path: string; alias: string; colorIndex: number; files?: { absolutePath: string; filename: string }[] };
   isPeekTarget: boolean;
   isPeekSource: boolean;
 }
@@ -21,6 +22,7 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingAlias, setEditingAlias] = useState(false);
+  const lastDims = useRef({ width: 0, height: 0 });
 
   const viewports = useViewportStore((s) => s.viewports);
   const vp = viewports[folder.path] || { zoom: 1, panX: 0, panY: 0 };
@@ -28,64 +30,117 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
   const panCell = useViewportStore((s) => s.panCell);
   const zoomAll = useViewportStore((s) => s.zoomAll);
   const panAll = useViewportStore((s) => s.panAll);
-  const resetCell = useViewportStore((s) => s.resetCell);
+
+  const currentSelection = useImageStore((s) => s.currentSelections[folder.path]);
+  const setSelection = useImageStore((s) => s.setSelection);
 
   const startPeek = usePeekStore((s) => s.startPeek);
   const stopPeek = usePeekStore((s) => s.stopPeek);
   const peekActive = usePeekStore((s) => s.active);
   const peekSourcePath = usePeekStore((s) => s.sourceFolderPath);
 
-  const tag = useTagStore((s) => s.tags[`${folder.path}/0042.png`]);
+  const tags = useTagStore((s) => s.tags);
+  const tag = currentSelection ? tags[currentSelection] : undefined;
   const updateAlias = useFolderStore((s) => s.updateAlias);
   const folders = useFolderStore((s) => s.folders);
   const setFocusedFolder = useUIStore((s) => s.setFocusedFolderIndex);
 
+  // Set initial selection to first file
+  useEffect(() => {
+    if (folder.files && folder.files.length > 0 && !currentSelection) {
+      setSelection(folder.path, folder.files[0].absolutePath);
+    }
+  }, [folder.path, folder.files, currentSelection, setSelection]);
+
+  // Get current file info
+  const currentFile = currentSelection
+    ? folder.files?.find((f) => f.absolutePath === currentSelection)
+    : null;
+  const currentFileName = currentFile?.filename || '0042.png';
+
+  // Load the current image
+  const { image, loading } = useImageLoader(currentSelection || null);
+
   const otherFolders = folders.filter((_, i) => i !== idx);
 
-  // Handle canvas drawing
+  // Canvas rendering
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
     const rect = container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
+
+    // Only resize canvas if dimensions changed
+    if (lastDims.current.width !== rect.width || lastDims.current.height !== rect.height) {
+      lastDims.current = { width: rect.width, height: rect.height };
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+    }
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, rect.width, rect.height);
 
-    // Draw background
+    // Background
     ctx.fillStyle = '#2a2724';
     ctx.fillRect(0, 0, rect.width, rect.height);
 
-    // Draw diagonal pattern
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx.lineWidth = 1;
-    for (let x = -rect.height; x < rect.width; x += 12) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x + rect.height, rect.height);
-      ctx.stroke();
+    if (image) {
+      const iw = image.naturalWidth;
+      const ih = image.naturalHeight;
+
+      if (iw > 0 && ih > 0) {
+        // Contain fit
+        const scaleX = rect.width / iw;
+        const scaleY = rect.height / ih;
+        const fitScale = Math.min(scaleX, scaleY) * vp.zoom;
+
+        const drawW = iw * fitScale;
+        const drawH = ih * fitScale;
+
+        // Center + pan
+        const cx = vp.panX + rect.width / 2;
+        const cy = vp.panY + rect.height / 2;
+        const dx = cx - drawW / 2;
+        const dy = cy - drawH / 2;
+
+        ctx.drawImage(image, dx, dy, drawW, drawH);
+      }
+    } else {
+      // Placeholder pattern + label
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1;
+      for (let x = -rect.height; x < rect.width; x += 12) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + rect.height, rect.height);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = 'rgba(250,248,243,0.85)';
+      ctx.font = '13px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(loading ? '加载中...' : `图 ${idx + 1}`, rect.width / 2, rect.height / 2);
     }
 
-    // Draw placeholder label
-    ctx.fillStyle = 'rgba(250,248,243,0.85)';
-    ctx.font = '13px "JetBrains Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`图 ${idx + 1}`, rect.width / 2, rect.height / 2);
-  }, [idx, vp.zoom]);
+    // Peek overlay
+    if (isPeekTarget && peekActive && peekSourcePath) {
+      ctx.fillStyle = 'rgba(231, 181, 40, 0.15)';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+    }
+  }, [image, loading, vp.zoom, vp.panX, vp.panY, isPeekTarget, peekActive, peekSourcePath, idx]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    const delta = e.deltaY > 0 ? -0.15 : 0.15;
     const rect = e.currentTarget.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     const cy = e.clientY - rect.top;
@@ -101,12 +156,13 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
   const lastPos = useRef({ x: 0, y: 0 });
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.target !== canvasRef.current && (e.target as HTMLElement).tagName === 'BUTTON') return;
+    // Don't start drag on buttons
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'BUTTON' || target.tagName === 'INPUT') return;
     setDragging(true);
     lastPos.current = { x: e.clientX, y: e.clientY };
     setFocusedFolder(idx);
-    error && setError(null);
-  }, [idx, setFocusedFolder, error]);
+  }, [idx, setFocusedFolder]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragging) return;
@@ -147,7 +203,7 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
 
       {/* Alias Badge — top-left */}
       {editingAlias ? (
-        <div style={{ position: 'absolute', top: 8, left: 8 }}>
+        <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 6 }}>
           <AliasEditInput
             initialValue={folder.alias}
             onSave={(a) => { updateAlias(idx, a); setEditingAlias(false); }}
@@ -156,7 +212,7 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
         </div>
       ) : (
         <div
-          onClick={() => setEditingAlias(true)}
+          onClick={(e) => { e.stopPropagation(); setEditingAlias(true); }}
           title="点击编辑 alias"
           style={{
             position: 'absolute', top: 8, left: 8,
@@ -201,8 +257,9 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
         background: 'rgba(0,0,0,0.4)',
         padding: '2px 6px', borderRadius: 3,
         zIndex: 5,
+        pointerEvents: 'none',
       }}>
-        0042.png · {Math.round(vp.zoom * 100)}%
+        {currentFileName} · {Math.round(vp.zoom * 100)}%
       </div>
 
       {/* Peek Buttons — bottom-right */}
@@ -222,8 +279,8 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
             return (
               <button
                 key={f.path}
-                onMouseDown={() => startPeek(f.path, folder.path, f.alias)}
-                onMouseUp={stopPeek}
+                onMouseDown={(e) => { e.stopPropagation(); startPeek(f.path, folder.path, f.alias); }}
+                onMouseUp={(e) => { e.stopPropagation(); stopPeek(); }}
                 onMouseLeave={(e) => { if (e.buttons === 0) stopPeek(); }}
                 title={`按住：将 ${f.alias} 叠到本格`}
                 style={{
@@ -260,6 +317,7 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
           fontWeight: 600,
           boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
           zIndex: 10,
+          pointerEvents: 'none',
         }}>
           peek 中：叠加 {folders.find((f) => f.path === peekSourcePath)?.alias || ''}
         </div>
