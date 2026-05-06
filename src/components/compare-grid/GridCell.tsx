@@ -6,6 +6,7 @@ import { useTagStore } from '../../stores/useTagStore.js';
 import { useFolderStore } from '../../stores/useFolderStore.js';
 import { useUIStore } from '../../stores/useUIStore.js';
 import { useImageLoader } from '../../hooks/useImageLoader.js';
+import { useResizeObserver } from '../../hooks/useResizeObserver.js';
 import { TAG_COLORS } from '../../types/tags.js';
 import AliasEditInput from '../dialogs/AliasEditInput.js';
 
@@ -19,10 +20,9 @@ interface GridCellProps {
 
 export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }: GridCellProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const { ref: containerRef, size } = useResizeObserver();
   const [error, setError] = useState<string | null>(null);
   const [editingAlias, setEditingAlias] = useState(false);
-  const lastDims = useRef({ width: 0, height: 0 });
 
   const viewports = useViewportStore((s) => s.viewports);
   const vp = viewports[folder.path] || { zoom: 1, panX: 0, panY: 0 };
@@ -66,22 +66,13 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
   // Canvas rendering
   useEffect(() => {
     const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
-
-    const rect = container.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
+    if (!canvas || size.width === 0 || size.height === 0) return;
 
     const dpr = window.devicePixelRatio || 1;
-
-    // Only resize canvas if dimensions changed
-    if (lastDims.current.width !== rect.width || lastDims.current.height !== rect.height) {
-      lastDims.current = { width: rect.width, height: rect.height };
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
-    }
+    canvas.width = size.width * dpr;
+    canvas.height = size.height * dpr;
+    canvas.style.width = `${size.width}px`;
+    canvas.style.height = `${size.height}px`;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -90,7 +81,7 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
 
     // Background
     ctx.fillStyle = '#2a2724';
-    ctx.fillRect(0, 0, rect.width, rect.height);
+    ctx.fillRect(0, 0, size.width, size.height);
 
     if (image) {
       const iw = image.naturalWidth;
@@ -98,16 +89,16 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
 
       if (iw > 0 && ih > 0) {
         // Contain fit
-        const scaleX = rect.width / iw;
-        const scaleY = rect.height / ih;
+        const scaleX = size.width / iw;
+        const scaleY = size.height / ih;
         const fitScale = Math.min(scaleX, scaleY) * vp.zoom;
 
         const drawW = iw * fitScale;
         const drawH = ih * fitScale;
 
         // Center + pan
-        const cx = vp.panX + rect.width / 2;
-        const cy = vp.panY + rect.height / 2;
+        const cx = vp.panX + size.width / 2;
+        const cy = vp.panY + size.height / 2;
         const dx = cx - drawW / 2;
         const dy = cy - drawH / 2;
 
@@ -117,10 +108,10 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
       // Placeholder pattern + label
       ctx.strokeStyle = 'rgba(255,255,255,0.04)';
       ctx.lineWidth = 1;
-      for (let x = -rect.height; x < rect.width; x += 12) {
+      for (let x = -size.height; x < size.width; x += 12) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x + rect.height, rect.height);
+        ctx.lineTo(x + size.height, size.height);
         ctx.stroke();
       }
 
@@ -128,15 +119,15 @@ export default function GridCell({ idx, n, folder, isPeekTarget, isPeekSource }:
       ctx.font = '13px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(loading ? '加载中...' : `图 ${idx + 1}`, rect.width / 2, rect.height / 2);
+      ctx.fillText(loading ? '加载中...' : `图 ${idx + 1}`, size.width / 2, size.height / 2);
     }
 
     // Peek overlay
     if (isPeekTarget && peekActive && peekSourcePath) {
       ctx.fillStyle = 'rgba(231, 181, 40, 0.15)';
-      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.fillRect(0, 0, size.width, size.height);
     }
-  }, [image, loading, vp.zoom, vp.panX, vp.panY, isPeekTarget, peekActive, peekSourcePath, idx]);
+  }, [image, loading, vp.zoom, vp.panX, vp.panY, isPeekTarget, peekActive, peekSourcePath, idx, size]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
